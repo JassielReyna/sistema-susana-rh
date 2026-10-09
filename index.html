@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Escolar - Profa. Susana</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- Librería para exportar a Excel (.xlsx) conservando colores y estilos -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; margin: 0; }
+        h1 { color: #333; margin-bottom: 5px; }
+        h3 { color: #555; margin-top: 0; margin-bottom: 20px; font-weight: normal; }
+        
+        /* Navegación entre vistas principales */
+        .nav-bar { margin-bottom: 15px; display: flex; justify-content: center; gap: 10px; }
+        .nav-btn { padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; background-color: #ddd; color: #333; transition: 0.3s; }
+        .nav-btn.activa { background-color: #66bb6a; color: white; }
+
+        /* Sub-menú de Modo */
+        .modo-bar { margin-bottom: 15px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; background: white; padding: 10px; border-radius: 8px; max-width: 650px; margin-left: auto; margin-right: auto; box-shadow: 0px 4px 10px rgba(0,0,0,0.05); }
+        .modo-btn { flex: 1; min-width: 120px; padding: 10px 8px; font-size: 14px; font-weight: bold; cursor: pointer; border: 2px solid transparent; border-radius: 5px; background-color: #f0f0f0; color: #555; transition: 0.3s; }
+        .modo-btn.activa { border: 2px solid #66bb6a; background-color: #f1f8e9; color: #2e7d32; }
+
+        /* Paneles de Configuración (Desempeño y Conducta) */
+        .panel-config { display: none; background: white; padding: 15px; border-radius: 8px; max-width: 450px; margin: 0 auto 15px auto; box-shadow: 0px 4px 10px rgba(0,0,0,0.08); }
+        .titulo-paso { font-size: 14px; font-weight: bold; color: #555; margin-bottom: 10px; margin-top: 5px; }
+        
+        .semaforo-bar { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px; }
+        .btn-color { flex: 1; padding: 18px 10px; font-size: 15px; font-weight: bold; color: white; border: 4px solid transparent; border-radius: 8px; cursor: pointer; transition: 0.2s; opacity: 0.75; }
+        .btn-color:hover { opacity: 1; }
+        .btn-color.seleccionado { opacity: 1; border-color: #333; transform: scale(1.04); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        
+        .color-verde { background-color: #2ecc71; }
+        .color-amarillo { background-color: #f1c40f; color: #333; }
+        .color-naranja { background-color: #e67e22; }
+
+        #btn-mostrar-comentarios { display: none; width: 100%; padding: 12px; font-size: 15px; font-weight: bold; background-color: #66bb6a; color: white; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 10px; transition: 0.3s; }
+        #btn-mostrar-comentarios:hover { background-color: #4caf50; }
+
+        .select-estilizado { width: 100%; padding: 12px; font-size: 16px; border-radius: 6px; border: 2px solid #66bb6a; background-color: #fafafa; font-weight: bold; color: #333; margin-bottom: 10px; }
+
+        /* Vistas */
+        #vista-escaner { display: block; }
+        #vista-reportes { display: none; text-align: left; max-width: 1100px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); overflow-x: auto; }
+
+        /* Burbuja de Notificaciones (Status) - Arriba de la cámara */
+        #status { margin: 0 auto 15px auto; padding: 12px; font-weight: bold; font-size: 1.15em; color: #66bb6a; background-color: white; border-radius: 8px; max-width: 450px; box-shadow: 0px 4px 10px rgba(0,0,0,0.08); }
+
+        /* Contenedor del Escáner */
+        #reader { width: 100%; max-width: 450px; margin: 0 auto; background: white; padding: 10px; border-radius: 8px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
+        
+        #reader select { padding: 12px !important; font-size: 16px !important; margin-bottom: 20px !important; border-radius: 5px !important; width: 90% !important; max-width: 300px !important; border: 2px solid #ccc !important; }
+        #reader button { padding: 15px 25px !important; font-size: 16px !important; margin: 10px !important; border-radius: 8px !important; background-color: #66bb6a !important; color: white !important; border: none !important; font-weight: bold !important; cursor: pointer !important; box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important; transition: 0.3s !important; }
+        #reader button:hover { background-color: #4caf50 !important; }
+        #reader a { font-size: 16px !important; display: inline-block !important; margin-top: 15px !important; padding: 10px !important; color: #66bb6a !important; }
+
+        /* Controles de reporte */
+        .controles-reporte { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; justify-content: center; background: #f9f9f9; padding: 15px; border-radius: 8px; }
+        .controles-reporte select, .controles-reporte input { padding: 8px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-accion { padding: 10px 15px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; color: white; background-color: #66bb6a; transition: 0.3s; }
+        .btn-accion:hover { background-color: #4caf50; }
+        .btn-accion.verde { background-color: #2e7d32; display: none; } 
+        .btn-accion.verde:hover { background-color: #1b5e20; }
+
+        /* Tabla de Reportes */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13.5px; }
+        th, td { border: 1px solid #ddd; padding: 10px 8px; text-align: center; }
+        th { background-color: #66bb6a; color: white; position: sticky; top: 0; white-space: nowrap; }
+        th.sub-col { background-color: #81c784; font-size: 12.5px; }
+        td.nombre-col { text-align: left; font-weight: bold; white-space: nowrap; }
+        .asistio { color: green; font-weight: bold; font-size: 16px; }
+        .falto { color: #999; font-weight: bold; }
+
+        /* Colores de Desempeño y Conducta en la tabla */
+        .celda-verde { background-color: #d4efdf; color: #117a65; font-weight: bold; }
+        .celda-amarillo { background-color: #fcf3cf; color: #9a7d0a; font-weight: bold; }
+        .celda-naranja { background-color: #fae5d3; color: #af601a; font-weight: bold; }
+        .celda-comentario { background-color: #fafafa; color: #333; white-space: nowrap; }
+        .celda-participacion { background-color: #f1f8e9; color: #2e7d32; font-weight: bold; font-size: 15px; border-right: 2px solid #b9eab8; }
+        .celda-escala { background-color: #e8f8f5; color: #0e6251; font-weight: bold; font-size: 15px; border-right: 2px solid #b9eab8; }
+        th.fin-bloque { border-right: 2px solid #2e7d32; }
+    </style>
+</head>
+<body>
+
+    <h1>Control Escolar</h1>
+    <h3>Profesora Susana</h3>
+
+    <!-- Menú Principal (Arriba) -->
+    <div class="nav-bar">
+        <button id="btn-nav-escaner" class="nav-btn activa" onclick="cambiarVista('escaner')">📷 Escáner</button>
+        <button id="btn-nav-reportes" class="nav-btn" onclick="cambiarVista('reportes')">📊 Matriz de Reportes</button>
+    </div>
+    
+    <!-- VISTA 1: ESCÁNER -->
+    <div id="vista-escaner">
+        
+        <!-- Sub-menú: Asistencia | Participaciones | Desempeño | Conducta -->
+        <div class="modo-bar">
+            <button id="btn-modo-asistencia" class="modo-btn activa" onclick="setModoEscaneo('asistencia')">📝 Asistencia</button>
+            <button id="btn-modo-participacion" class="modo-btn" onclick="setModoEscaneo('participacion')">🙋 Participaciones</button>
+            <button id="btn-modo-desempeno" class="modo-btn" onclick="setModoEscaneo('desempeno')">🚦 Desempeño</button>
+            <button id="btn-modo-conducta" class="modo-btn" onclick="setModoEscaneo('conducta')">⭐ Conducta</button>
+        </div>
+
+        <!-- PANEL PASO A PASO DE DESEMPEÑO (SEMANAL) -->
+        <div id="panel-desempeno" class="panel-config">
+            <div class="titulo-paso">1. Selecciona el nivel de desempeño:</div>
+            <div class="semaforo-bar">
+                <button id="btn-col-verde" class="btn-color color-verde" onclick="seleccionarColor('VERDE')">VERDE</button>
+                <button id="btn-col-amarillo" class="btn-color color-amarillo" onclick="seleccionarColor('AMARILLO')">AMARILLO</button>
+                <button id="btn-col-naranja" class="btn-color color-naranja" onclick="seleccionarColor('NARANJA')">NARANJA</button>
+            </div>
+
+            <!-- Lista desplegable dinámica -->
+            <div id="contenedor-select-comentario" style="display: none; margin-top: 10px;">
+                <div class="titulo-paso" id="titulo-comentario-desempeno">2. Elige el comentario:</div>
+                <select id="select-comentario" class="select-estilizado" onchange="seleccionarComentario()">
+                    <!-- Se llena con JS según el color -->
+                </select>
+            </div>
+        </div>
+
+        <!-- PANEL PASO A PASO DE CONDUCTA (QUINCENAL) -->
+        <div id="panel-conducta" class="panel-config">
+            <div class="titulo-paso">1. Selecciona la observación de conducta:</div>
+            <select id="select-comentario-conducta" class="select-estilizado" onchange="seleccionarComentarioConducta()">
+                <option value="">-- Selecciona una observación --</option>
+                <option value="15% descontable">15% descontable</option>
+                <option value="10% descontable">10% descontable</option>
+            </select>
+
+            <div id="contenedor-escala-conducta" style="display: none; margin-top: 10px;">
+                <div class="titulo-paso">2. Selecciona la escala (0 al 4):</div>
+                <select id="select-escala-conducta" class="select-estilizado" onchange="seleccionarEscalaConducta()">
+                    <option value="">-- Elige un número --</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- BURBUJA DE ESTADO -->
+        <div id="status">Iniciando sistema...</div>
+
+        <!-- CÁMARA -->
+        <div id="reader"></div>
+    </div>
+
+    <!-- VISTA 2: REPORTES -->
+    <div id="vista-reportes">
+        <h2 style="text-align: center; margin-top: 0;">Generador de Matrices Trimestrales</h2>
+        
+        <!-- Sub-menú de Reportes (3 Matrices) -->
+        <div class="modo-bar">
+            <button id="btn-rep-asistencia" class="modo-btn activa" onclick="setModoReporte('asistencia')">📋 Matriz de Asistencias</button>
+            <button id="btn-rep-desempeno" class="modo-btn" onclick="setModoReporte('desempeno')">🚦 Matriz de Desempeño</button>
+            <button id="btn-rep-conducta" class="modo-btn" onclick="setModoReporte('conducta')">⭐ Matriz de Conducta</button>
+        </div>
+
+        <div class="controles-reporte">
+            <div>
+                <label><strong>Grupo:</strong> </label>
+                <select id="select-grupo">
+                    <option value="">Cargando...</option>
+                </select>
+            </div>
+
+            <!-- Selector de Trimestre unificado -->
+            <div id="filtro-trimestre" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <label><strong>Trimestre (De:</strong></label>
+                <input type="month" id="input-mes-inicio" required>
+                <label><strong>a</strong></label>
+                <input type="month" id="input-mes-fin" required>
+                <label><strong>)</strong></label>
+            </div>
+
+            <button class="btn-accion" onclick="generarReporte()">Generar Tabla</button>
+            <button id="btn-descarga" class="btn-accion verde" onclick="descargarMatrizExcel()">⬇️ Descargar Excel</button>
+        </div>
+
+        <div id="contenedor-matriz">
+            <p style="text-align: center;">Selecciona un grupo, los meses del trimestre y presiona "Generar Tabla".</p>
+        </div>
+    </div>
+
+    <script>
+        // --- LLAVES DE SUPABASE ---
+        const URL_PROYECTO = 'https://retwotliyxutzgsftwff.supabase.co';
+        const LLAVE_PUBLICA = 'sb_publishable_mjZTWi3pGAHXd6tGyEJkBQ_nAXal2kD';
+        const clienteSupabase = supabase.createClient(URL_PROYECTO, LLAVE_PUBLICA);
+
+        // --- ARCHIVO .MP3 EXCLUSIVO PARA COLOR VERDE EN DESEMPEÑO ---
+        const audioVerdeMp3 = new Audio('verde.mp3');
+        audioVerdeMp3.preload = 'auto';
+
+        function reproducirMp3Verde() {
+            try {
+                audioVerdeMp3.currentTime = 0; 
+                const promesaPlay = audioVerdeMp3.play();
+                if (promesaPlay !== undefined) {
+                    promesaPlay.catch(err => {
+                        console.warn("No se pudo reproducir verde.mp3, usando sonido de respaldo:", err);
+                        reproducirSonido('exito');
+                    });
+                }
+            } catch (e) {
+                reproducirSonido('exito');
+            }
+        }
+
+        // --- SISTEMA DE SONIDO SINTETIZADO (PARA EL RESTO DE FUNCIONES) ---
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContextClass();
+
+        document.addEventListener('click', () => {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        });
+
+        function reproducirSonido(tipo) {
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const ahora = audioCtx.currentTime;
+
+                if (tipo === 'exito') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(987.77, ahora);
+                    osc.frequency.setValueAtTime(1318.51, ahora + 0.08);
+                    gain.gain.setValueAtTime(0.35, ahora);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.22);
+                    osc.start(ahora);
+                    osc.stop(ahora + 0.22);
+                } else if (tipo === 'alerta') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, ahora);
+                    osc.frequency.setValueAtTime(330, ahora + 0.12);
+                    gain.gain.setValueAtTime(0.35, ahora);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.28);
+                    osc.start(ahora);
+                    osc.stop(ahora + 0.28);
+                } else if (tipo === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(160, ahora);
+                    gain.gain.setValueAtTime(0.3, ahora);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.35);
+                    osc.start(ahora);
+                    osc.stop(ahora + 0.35);
+                }
+            } catch (e) {
+                console.error("No se pudo reproducir el sonido:", e);
+            }
+        }
+
+        let datosMatrizActual = [];
+        let columnasReporteActual = [];
+        
+        let modoEscaneoActual = 'asistencia'; 
+        let modoReporteActual = 'asistencia';
+        
+        // Variables Desempeño
+        let colorSeleccionado = '';
+        let comentarioSeleccionado = '';
+
+        // Variables Conducta
+        let comentarioConductaSeleccionado = '';
+        let escalaConductaSeleccionada = '';
+
+        const mesesCortosMin = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+        const statusText = document.getElementById('status');
+        let ultimoEscaneo = ""; 
+        let procesandoEscaneo = false; // Candado para evitar lecturas dobles
+
+        function formatearDiaMes(fechaStr) {
+            const partes = fechaStr.split('-');
+            const mesIndex = parseInt(partes[1], 10) - 1;
+            const diaNum = parseInt(partes[2], 10);
+            return `${diaNum} ${mesesCortosMin[mesIndex]}`;
+        }
+
+        function obtenerDatosSemana(fechaStr) {
+            const [y, m, d] = fechaStr.split('-').map(Number);
+            const fecha = new Date(y, m - 1, d);
+            const diaSemana = fecha.getDay(); 
+            const diffLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+            
+            const lunes = new Date(y, m - 1, d + diffLunes);
+            const viernes = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + 4);
+            const domingo = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + 6);
+
+            const claveLunes = lunes.toLocaleDateString('sv-SE'); 
+            const fechaFinSemana = domingo.toLocaleDateString('sv-SE');
+            const etiqueta = `${lunes.getDate()} ${mesesCortosMin[lunes.getMonth()]} - ${viernes.getDate()} ${mesesCortosMin[viernes.getMonth()]}`;
+
+            return { claveLunes, fechaFinSemana, etiqueta };
+        }
+
+        function obtenerDatosQuincena(fechaStr) {
+            const [y, m, d] = fechaStr.split('-').map(Number);
+            const fecha = new Date(y, m - 1, d);
+            const diaSemana = fecha.getDay();
+            const diffLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+
+            const lunesSemanaUTC = Date.UTC(y, m - 1, d + diffLunes);
+            const anclaLunesUTC = Date.UTC(2026, 8, 28); 
+
+            const diffDias = Math.round((lunesSemanaUTC - anclaLunesUTC) / 86400000);
+            const residuo = ((diffDias % 14) + 14) % 14; 
+
+            const lunesQuincena = new Date(y, m - 1, d + diffLunes - residuo);
+            const viernesQuincena = new Date(lunesQuincena.getFullYear(), lunesQuincena.getMonth(), lunesQuincena.getDate() + 11);
+            const domingoQuincena = new Date(lunesQuincena.getFullYear(), lunesQuincena.getMonth(), lunesQuincena.getDate() + 13);
+
+            const claveInicio = lunesQuincena.toLocaleDateString('sv-SE');
+            const fechaFinQuincena = domingoQuincena.toLocaleDateString('sv-SE');
+            const etiqueta = `${lunesQuincena.getDate()} ${mesesCortosMin[lunesQuincena.getMonth()]} - ${viernesQuincena.getDate()} ${mesesCortosMin[viernesQuincena.getMonth()]}`;
+
+            return { claveInicio, fechaFinQuincena, etiqueta };
+        }
+
+        function cambiarVista(vista) {
+            document.getElementById('vista-escaner').style.display = vista === 'escaner' ? 'block' : 'none';
+            document.getElementById('vista-reportes').style.display = vista === 'reportes' ? 'block' : 'none';
+            
+            document.getElementById('btn-nav-escaner').classList.toggle('activa', vista === 'escaner');
+            document.getElementById('btn-nav-reportes').classList.toggle('activa', vista === 'reportes');
+
+            if (vista === 'reportes') cargarGruposDisponibles();
+        }
+
+        function setModoReporte(modo) {
+            modoReporteActual = modo;
+            document.getElementById('btn-rep-asistencia').classList.toggle('activa', modo === 'asistencia');
+            document.getElementById('btn-rep-desempeno').classList.toggle('activa', modo === 'desempeno');
+            document.getElementById('btn-rep-conducta').classList.toggle('activa', modo === 'conducta');
+
+            document.getElementById('btn-descarga').style.display = 'none';
+            let textoModo = 'Asistencias (Trimestral)';
+            if (modo === 'desempeno') textoModo = 'Desempeño y Participaciones (Semanal)';
+            if (modo === 'conducta') textoModo = 'Conducta (Quincenal)';
+
+            document.getElementById('contenedor-matriz').innerHTML = `<p style="text-align: center;">Selecciona el grupo y los meses del trimestre, y presiona "Generar Tabla" para ver la <strong>Matriz de ${textoModo}</strong>.</p>`;
+        }
+
+        function setModoEscaneo(modo) {
+            modoEscaneoActual = modo;
+            document.getElementById('btn-modo-asistencia').classList.toggle('activa', modo === 'asistencia');
+            document.getElementById('btn-modo-participacion').classList.toggle('activa', modo === 'participacion');
+            document.getElementById('btn-modo-desempeno').classList.toggle('activa', modo === 'desempeno');
+            document.getElementById('btn-modo-conducta').classList.toggle('activa', modo === 'conducta');
+
+            document.getElementById('panel-desempeno').style.display = 'none';
+            document.getElementById('panel-conducta').style.display = 'none';
+
+            if (modo === 'asistencia') {
+                document.getElementById('reader').style.display = 'block';
+                statusText.innerText = 'Modo ASISTENCIA: Listo para escanear.';
+                statusText.style.color = '#66bb6a';
+            } else if (modo === 'participacion') {
+                document.getElementById('reader').style.display = 'block';
+                statusText.innerText = 'Modo PARTICIPACIONES: Escanea el QR del alumno.';
+                statusText.style.color = '#66bb6a';
+            } else if (modo === 'desempeno') {
+                document.getElementById('panel-desempeno').style.display = 'block';
+                reiniciarFlujoDesempeno();
+            } else if (modo === 'conducta') {
+                document.getElementById('panel-conducta').style.display = 'block';
+                reiniciarFlujoConducta();
+            }
+        }
+
+        // --- FLUJO PASO A PASO: DESEMPEÑO ---
+        function reiniciarFlujoDesempeno() {
+            colorSeleccionado = '';
+            comentarioSeleccionado = '';
+            document.querySelectorAll('.btn-color').forEach(b => b.classList.remove('seleccionado'));
+            document.getElementById('contenedor-select-comentario').style.display = 'none';
+            document.getElementById('select-comentario').value = '';
+            document.getElementById('reader').style.display = 'none';
+
+            statusText.innerText = '👆 Paso 1: Elige un color de desempeño.';
+            statusText.style.color = '#555';
+        }
+
+        function seleccionarColor(color) {
+            colorSeleccionado = color;
+            comentarioSeleccionado = ''; // Reiniciar el comentario al cambiar de color
+            
+            document.getElementById('btn-col-verde').classList.toggle('seleccionado', color === 'VERDE');
+            document.getElementById('btn-col-amarillo').classList.toggle('seleccionado', color === 'AMARILLO');
+            document.getElementById('btn-col-naranja').classList.toggle('seleccionado', color === 'NARANJA');
+
+            const selectElement = document.getElementById('select-comentario');
+            selectElement.innerHTML = ''; // Limpiar opciones
+
+            document.getElementById('contenedor-select-comentario').style.display = 'block';
+
+            if (color === 'VERDE') {
+                audioVerdeMp3.load(); // Pre-cargar mp3
+                document.getElementById('titulo-comentario-desempeno').innerText = "Paso 2 (Opcional): Elige un comentario o escanea ahora:";
+                selectElement.innerHTML = `
+                    <option value="">-- Sin comentario --</option>
+                    <option value="Completo">Completo</option>
+                `;
+                // VERDE abre la cámara de inmediato porque el comentario es opcional
+                document.getElementById('reader').style.display = 'block';
+                statusText.innerText = `📷 Escanea el QR (${colorSeleccionado})`;
+                statusText.style.color = '#2e7d32';
+            } else {
+                document.getElementById('titulo-comentario-desempeno').innerText = "Paso 2 (Obligatorio): Elige el comentario:";
+                // AMARILLO O NARANJA obligan a elegir antes de abrir la cámara
+                document.getElementById('reader').style.display = 'none';
+                
+                if (color === 'AMARILLO') {
+                    selectElement.innerHTML = `
+                        <option value="">-- Selecciona una opción --</option>
+                        <option value="Recuperar actividades">Recuperar actividades</option>
+                        <option value="Atender observaciones">Atender observaciones</option>
+                    `;
+                } else if (color === 'NARANJA') {
+                    selectElement.innerHTML = `
+                        <option value="">-- Selecciona una opción --</option>
+                        <option value="Trabajos inconclusos">Trabajos inconclusos</option>
+                        <option value="Sin registro, mínimo">Sin registro, mínimo</option>
+                    `;
+                }
+                statusText.innerText = `👆 Paso 2: Selecciona una opción para continuar.`;
+                statusText.style.color = '#66bb6a';
+            }
+        }
+
+        function seleccionarComentario() {
+            comentarioSeleccionado = document.getElementById('select-comentario').value;
+            
+            // Si es VERDE siempre permite escanear. Si es AMARILLO/NARANJA requiere texto.
+            if (colorSeleccionado === 'VERDE' || (colorSeleccionado !== 'VERDE' && comentarioSeleccionado !== '')) {
+                document.getElementById('reader').style.display = 'block';
+                const textoMos = comentarioSeleccionado !== '' ? ` - ${comentarioSeleccionado}` : '';
+                statusText.innerText = `📷 Escanea el QR (${colorSeleccionado}${textoMos})`;
+                statusText.style.color = '#2e7d32';
+            } else {
+                document.getElementById('reader').style.display = 'none';
+                statusText.innerText = '👆 Selecciona una opción válida de comentario.';
+                statusText.style.color = '#555';
+            }
+        }
+
+        // --- FLUJO PASO A PASO: CONDUCTA ---
+        function reiniciarFlujoConducta() {
+            comentarioConductaSeleccionado = '';
+            escalaConductaSeleccionada = '';
+            document.getElementById('select-comentario-conducta').value = '';
+            document.getElementById('select-escala-conducta').value = '';
+            document.getElementById('contenedor-escala-conducta').style.display = 'none';
+            document.getElementById('reader').style.display = 'none';
+
+            statusText.innerText = '👆 Paso 1: Selecciona una observación de conducta.';
+            statusText.style.color = '#555';
+        }
+
+        function seleccionarComentarioConducta() {
+            comentarioConductaSeleccionado = document.getElementById('select-comentario-conducta').value;
+            if (comentarioConductaSeleccionado !== '') {
+                document.getElementById('contenedor-escala-conducta').style.display = 'block';
+                if (escalaConductaSeleccionada !== '') {
+                    document.getElementById('reader').style.display = 'block';
+                    statusText.innerText = `📷 Escanea el QR (${comentarioConductaSeleccionado} | Escala: ${escalaConductaSeleccionada})`;
+                    statusText.style.color = '#2e7d32';
+                } else {
+                    statusText.innerText = '👆 Paso 2: Ahora selecciona la escala (0 al 4).';
+                    statusText.style.color = '#66bb6a';
+                }
+            } else {
+                document.getElementById('contenedor-escala-conducta').style.display = 'none';
+                document.getElementById('reader').style.display = 'none';
+                statusText.innerText = '👆 Paso 1: Selecciona una observación de conducta.';
+                statusText.style.color = '#555';
+            }
+        }
+
+        function seleccionarEscalaConducta() {
+            escalaConductaSeleccionada = document.getElementById('select-escala-conducta').value;
+            if (comentarioConductaSeleccionado !== '' && escalaConductaSeleccionada !== '') {
+                document.getElementById('reader').style.display = 'block';
+                statusText.innerText = `📷 Escanea el QR (${comentarioConductaSeleccionado} | Escala: ${escalaConductaSeleccionada})`;
+                statusText.style.color = '#2e7d32';
+            } else {
+                document.getElementById('reader').style.display = 'none';
+                statusText.innerText = '👆 Selecciona un número válido en la escala.';
+                statusText.style.color = '#555';
+            }
+        }
+        
+        const escaner = new Html5QrcodeScanner("reader", { 
+            fps: 10, 
+            qrbox: function(viewfinderWidth, viewfinderHeight) {
+                let areaVisible = Math.min(viewfinderWidth, viewfinderHeight);
+                let tamañoCuadrante = Math.floor(areaVisible * 0.85); 
+                return { width: tamañoCuadrante, height: tamañoCuadrante };
+            }
+        }, false);
+
+        async function onScanSuccess(codigoEscaneado) {
+            // Validaciones de seguridad de llenado
+            if (modoEscaneoActual === 'desempeno' && !colorSeleccionado) return;
+            if (modoEscaneoActual === 'desempeno' && colorSeleccionado !== 'VERDE' && !comentarioSeleccionado) return;
+            if (modoEscaneoActual === 'conducta' && (!comentarioConductaSeleccionado || escalaConductaSeleccionada === '')) return;
+
+            // Bloqueo para no procesar lecturas simultáneas
+            if (procesandoEscaneo || codigoEscaneado === ultimoEscaneo) return;
+            procesandoEscaneo = true;
+            ultimoEscaneo = codigoEscaneado;
+            
+            statusText.innerText = "Registrando alumno...";
+            statusText.style.color = "orange";
+
+            try {
+                const { data: alumno, error: errorAlumno } = await clienteSupabase
+                    .from('alumnos_susana')
+                    .select('id, nombre_completo, grupo')
+                    .eq('codigo_qr', codigoEscaneado)
+                    .single();
+
+                if (errorAlumno || !alumno) {
+                    reproducirSonido('error');
+                    statusText.innerText = "❌ Código no reconocido.";
+                    statusText.style.color = "red";
+                    reiniciarEscaner();
+                    return;
+                }
+
+                const hoy = new Date();
+                const fechaHoy = hoy.toLocaleDateString('sv-SE'); 
+                const semanaHoy = obtenerDatosSemana(fechaHoy);
+                const quincenaHoy = obtenerDatosQuincena(fechaHoy);
+
+                if (modoEscaneoActual === 'asistencia') {
+                    // --- 1. GUARDAR ASISTENCIA DIARIA ---
+                    const { data: registrosHoy, error: errorBusqueda } = await clienteSupabase
+                        .from('asistencias_susana')
+                        .select('id')
+                        .eq('alumno_id', alumno.id)
+                        .eq('fecha', fechaHoy)
+                        .limit(1);
+
+                    if (errorBusqueda) throw errorBusqueda;
+
+                    if (registrosHoy && registrosHoy.length > 0) {
+                        reproducirSonido('alerta');
+                        statusText.innerText = `⚠️ ${alumno.nombre_completo} (${alumno.grupo}) ya fue escaneado hoy.`;
+                        statusText.style.color = "#856404"; 
+                    } else {
+                        const { error: errorInsert } = await clienteSupabase
+                            .from('asistencias_susana')
+                            .insert([{ alumno_id: alumno.id, fecha: fechaHoy }]);
+
+                        if (errorInsert) throw errorInsert;
+
+                        reproducirSonido('exito');
+                        statusText.innerText = `✅ ASISTENCIA: ${alumno.nombre_completo} (${alumno.grupo})`;
+                        statusText.style.color = "green";
+                    }
+
+                } else if (modoEscaneoActual === 'participacion') {
+                    // --- 2. GUARDAR PARTICIPACIÓN SEMANAL ---
+                    const { error: errorPart } = await clienteSupabase
+                        .from('participaciones_susana')
+                        .insert([{ alumno_id: alumno.id, fecha: fechaHoy }]);
+
+                    if (errorPart) throw errorPart;
+
+                    const { count: totalPartSemana } = await clienteSupabase
+                        .from('participaciones_susana')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('alumno_id', alumno.id)
+                        .gte('fecha', semanaHoy.claveLunes)
+                        .lte('fecha', semanaHoy.fechaFinSemana);
+
+                    reproducirSonido('exito');
+                    statusText.innerText = `🙋 PARTICIPACIÓN #${totalPartSemana || 1} (${semanaHoy.etiqueta}): ${alumno.nombre_completo}`;
+                    statusText.style.color = "green";
+
+                } else if (modoEscaneoActual === 'desempeno') {
+                    // --- 3. GUARDAR DESEMPEÑO (1 VEZ POR SEMANA) ---
+                    const stringComentario = comentarioSeleccionado === '' ? '-' : comentarioSeleccionado;
+
+                    const { data: evalsExistentes } = await clienteSupabase
+                        .from('desempeno_susana')
+                        .select('id')
+                        .eq('alumno_id', alumno.id)
+                        .gte('fecha', semanaHoy.claveLunes)
+                        .lte('fecha', semanaHoy.fechaFinSemana)
+                        .limit(1);
+
+                    if (evalsExistentes && evalsExistentes.length > 0) {
+                        await clienteSupabase
+                            .from('desempeno_susana')
+                            .update({ color: colorSeleccionado, comentario: stringComentario, fecha: fechaHoy })
+                            .eq('id', evalsExistentes[0].id);
+
+                        if (colorSeleccionado === 'VERDE') {
+                            reproducirMp3Verde();
+                        } else {
+                            reproducirSonido('exito');
+                        }
+
+                        const textVis = stringComentario !== '-' ? ` - ${stringComentario}` : '';
+                        statusText.innerText = `🔄 ACTUALIZADO (${semanaHoy.etiqueta}): ${colorSeleccionado}${textVis} - ${alumno.nombre_completo}`;
+                        statusText.style.color = "#117a65";
+                    } else {
+                        const { error: errorDesempeno } = await clienteSupabase
+                            .from('desempeno_susana')
+                            .insert([{ 
+                                alumno_id: alumno.id, 
+                                fecha: fechaHoy,
+                                color: colorSeleccionado,
+                                comentario: stringComentario
+                            }]);
+
+                        if (errorDesempeno) throw errorDesempeno;
+
+                        if (colorSeleccionado === 'VERDE') {
+                            reproducirMp3Verde();
+                        } else {
+                            reproducirSonido('exito');
+                        }
+
+                        const textVis = stringComentario !== '-' ? ` - ${stringComentario}` : '';
+                        statusText.innerText = `✅ ${semanaHoy.etiqueta} (${colorSeleccionado}${textVis}): ${alumno.nombre_completo}`;
+                        statusText.style.color = "green";
+                    }
+
+                } else if (modoEscaneoActual === 'conducta') {
+                    // --- 4. GUARDAR CONDUCTA (1 VEZ POR QUINCENA / CADA 2 SEMANAS) ---
+                    const escalaNum = parseInt(escalaConductaSeleccionada, 10);
+
+                    const { data: conductasExistentes } = await clienteSupabase
+                        .from('conducta_susana')
+                        .select('id')
+                        .eq('alumno_id', alumno.id)
+                        .gte('fecha', quincenaHoy.claveInicio)
+                        .lte('fecha', quincenaHoy.fechaFinQuincena)
+                        .limit(1);
+
+                    if (conductasExistentes && conductasExistentes.length > 0) {
+                        await clienteSupabase
+                            .from('conducta_susana')
+                            .update({ comentario: comentarioConductaSeleccionado, escala: escalaNum, fecha: fechaHoy })
+                            .eq('id', conductasExistentes[0].id);
+
+                        reproducirSonido('exito');
+                        statusText.innerText = `🔄 CONDUCTA ACTUALIZADA (${quincenaHoy.etiqueta}): ${alumno.nombre_completo}`;
+                        statusText.style.color = "#117a65";
+                    } else {
+                        const { error: errorConducta } = await clienteSupabase
+                            .from('conducta_susana')
+                            .insert([{ 
+                                alumno_id: alumno.id, 
+                                fecha: fechaHoy,
+                                comentario: comentarioConductaSeleccionado,
+                                escala: escalaNum
+                            }]);
+
+                        if (errorConducta) throw errorConducta;
+
+                        reproducirSonido('exito');
+                        statusText.innerText = `⭐ CONDUCTA (${quincenaHoy.etiqueta}) | Escala ${escalaNum}: ${alumno.nombre_completo}`;
+                        statusText.style.color = "green";
+                    }
+                }
+
+            } catch (error) {
+                reproducirSonido('error');
+                statusText.innerText = "Error de conexión.";
+                statusText.style.color = "red";
+            }
+            reiniciarEscaner();
+        }
+
+        function onScanFailure(error) {}
+
+        function reiniciarEscaner() {
+            setTimeout(() => { 
+                ultimoEscaneo = ""; 
+                procesandoEscaneo = false;
+                if (modoEscaneoActual === 'asistencia') {
+                    statusText.innerText = "Siguiente alumno... (Modo ASISTENCIA)";
+                    statusText.style.color = "#66bb6a"; 
+                } else if (modoEscaneoActual === 'participacion') {
+                    statusText.innerText = "Siguiente alumno... (Modo PARTICIPACIONES)";
+                    statusText.style.color = "#66bb6a"; 
+                } else if (modoEscaneoActual === 'desempeno') {
+                    const textVis = comentarioSeleccionado !== '' ? ` - ${comentarioSeleccionado}` : '';
+                    statusText.innerText = `Siguiente alumno... (${colorSeleccionado}${textVis})`;
+                    statusText.style.color = "#2e7d32"; 
+                } else if (modoEscaneoActual === 'conducta') {
+                    statusText.innerText = `Siguiente alumno... (${comentarioConductaSeleccionado} | Escala: ${escalaConductaSeleccionada})`;
+                    statusText.style.color = "#2e7d32";
+                }
+            }, 2500); 
+        }
+
+        // Inicializar trimestre por defecto (Desde el mes actual hasta 2 meses adelante)
+        const hoy = new Date();
+        const mesActualStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById('input-mes-inicio').value = mesActualStr;
+        
+        const fechaFinTrim = new Date(hoy.getFullYear(), hoy.getMonth() + 2, 1);
+        document.getElementById('input-mes-fin').value = `${fechaFinTrim.getFullYear()}-${String(fechaFinTrim.getMonth() + 1).padStart(2, '0')}`;
+
+        async function cargarGruposDisponibles() {
+            const select = document.getElementById('select-grupo');
+            const valorPrevio = select.value;
+            const { data, error } = await clienteSupabase.from('alumnos_susana').select('grupo');
+            
+            if (error || !data) return;
+
+            const gruposUnicos = [...new Set(data.map(a => a.grupo))].sort();
+            
+            select.innerHTML = '<option value="">-- Elige un Grupo --</option>';
+            gruposUnicos.forEach(g => {
+                select.innerHTML += `<option value="${g}">${g}</option>`;
+            });
+            if (gruposUnicos.includes(valorPrevio)) select.value = valorPrevio;
+        }
+
+        // --- GENERADOR DE REPORTES TRIMESTRALES ---
+        async function generarReporte() {
+            const grupoSeleccionado = document.getElementById('select-grupo').value;
+            const mesInicio = document.getElementById('input-mes-inicio').value;
+            const mesFin = document.getElementById('input-mes-fin').value;
+            const contenedor = document.getElementById('contenedor-matriz');
+            const btnDescarga = document.getElementById('btn-descarga');
+
+            if (!grupoSeleccionado || !mesInicio || !mesFin) {
+                alert("Por favor, selecciona un grupo y los meses del trimestre.");
+                return;
+            }
+
+            if (mesInicio > mesFin) {
+                alert("El mes de inicio no puede ser mayor al mes final.");
+                return;
+            }
+
+            contenedor.innerHTML = "<p style='text-align:center;'>Procesando datos del trimestre...</p>";
+            btnDescarga.style.display = "none";
+
+            try {
+                const { data: alumnos } = await clienteSupabase
+                    .from('alumnos_susana')
+                    .select('id, nombre_completo')
+                    .eq('grupo', grupoSeleccionado)
+                    .order('nombre_completo', { ascending: true });
+
+                if (!alumnos || alumnos.length === 0) {
+                    contenedor.innerHTML = "<p style='text-align:center;'>No hay alumnos registrados en este grupo.</p>";
+                    return;
+                }
+
+                const idsAlumnos = alumnos.map(a => a.id);
+                const [anioIni, mIni] = mesInicio.split('-');
+                const [anioFin, mFin] = mesFin.split('-');
+
+                const primerDiaTrim = `${anioIni}-${mIni}-01`;
+                const ultimoDiaTrim = new Date(anioFin, mFin, 0).toLocaleDateString('sv-SE');
+
+                if (modoReporteActual === 'asistencia') {
+                    // =====================================================
+                    // MODO 1: MATRIZ DE ASISTENCIAS (TRIMESTRAL POR DÍAS)
+                    // =====================================================
+                    const { data: registrosTrimestre } = await clienteSupabase
+                        .from('asistencias_susana')
+                        .select('alumno_id, fecha')
+                        .in('alumno_id', idsAlumnos)
+                        .gte('fecha', primerDiaTrim)
+                        .lte('fecha', ultimoDiaTrim);
+
+                    const fechasUnicas = [...new Set((registrosTrimestre || []).map(a => a.fecha))].sort();
+
+                    if (fechasUnicas.length === 0) {
+                        contenedor.innerHTML = "<p style='text-align:center;'>No hay asistencias registradas para este grupo en este trimestre.</p>";
+                        return;
+                    }
+
+                    columnasReporteActual = [];
+                    let htmlTabla = `<table><thead><tr><th>No.</th><th class="nombre-col">Nombre del Alumno</th>`;
+                    
+                    fechasUnicas.forEach(fecha => {
+                        const etiquetaDia = formatearDiaMes(fecha);
+                        htmlTabla += `<th>${etiquetaDia}</th>`;
+                        columnasReporteActual.push(etiquetaDia);
+                    });
+                    
+                    htmlTabla += `<th>TOTAL ASISTENCIAS</th></tr></thead><tbody>`;
+
+                    datosMatrizActual = []; 
+
+                    alumnos.forEach((alumno, index) => {
+                        let acumuladoTotal = 0;
+                        let numLista = index + 1; 
+                        
+                        let filaHTML = `<tr><td>${numLista}</td><td class="nombre-col">${alumno.nombre_completo}</td>`;
+                        let datosAlumno = { numero: numLista, nombre: alumno.nombre_completo, celdas: [] };
+
+                        fechasUnicas.forEach(fecha => {
+                            const vino = registrosTrimestre.some(r => r.alumno_id === alumno.id && r.fecha === fecha);
+                            if (vino) {
+                                filaHTML += `<td class="asistio">✓</td>`;
+                                datosAlumno.celdas.push({ valor: '✓', tipo: 'asistio' });
+                                acumuladoTotal++;
+                            } else {
+                                filaHTML += `<td class="falto">-</td>`;
+                                datosAlumno.celdas.push({ valor: '-', tipo: 'falto' });
+                            }
+                        });
+
+                        datosAlumno.total = acumuladoTotal;
+                        datosMatrizActual.push(datosAlumno);
+
+                        filaHTML += `<td><strong>${acumuladoTotal}</strong></td></tr>`;
+                        htmlTabla += filaHTML;
+                    });
+
+                    htmlTabla += `</tbody></table>`;
+                    contenedor.innerHTML = htmlTabla;
+                    btnDescarga.style.display = "inline-block";
+
+                } else if (modoReporteActual === 'desempeno') {
+                    // =========================================================================
+                    // MODO 2: MATRIZ DE DESEMPEÑO TRIMESTRAL POR SEMANAS (LUN - VIE)
+                    // =========================================================================
+                    const fechaInicioTrim = obtenerDatosSemana(primerDiaTrim).claveLunes;
+                    const fechaFinTrim = obtenerDatosSemana(ultimoDiaTrim).fechaFinSemana;
+
+                    const { data: registrosDesempeno } = await clienteSupabase
+                        .from('desempeno_susana')
+                        .select('alumno_id, fecha, color, comentario, created_at')
+                        .in('alumno_id', idsAlumnos)
+                        .gte('fecha', fechaInicioTrim)
+                        .lte('fecha', fechaFinTrim)
+                        .order('created_at', { ascending: true });
+
+                    const { data: registrosParticipacion } = await clienteSupabase
+                        .from('participaciones_susana')
+                        .select('alumno_id, fecha')
+                        .in('alumno_id', idsAlumnos)
+                        .gte('fecha', fechaInicioTrim)
+                        .lte('fecha', fechaFinTrim);
+
+                    const mapaSemanas = {};
+
+                    (registrosDesempeno || []).forEach(r => {
+                        const sem = obtenerDatosSemana(r.fecha);
+                        mapaSemanas[sem.claveLunes] = sem.etiqueta;
+                    });
+
+                    (registrosParticipacion || []).forEach(p => {
+                        const sem = obtenerDatosSemana(p.fecha);
+                        mapaSemanas[sem.claveLunes] = sem.etiqueta;
+                    });
+
+                    const clavesSemanasOrdenadas = Object.keys(mapaSemanas).sort();
+
+                    if (clavesSemanasOrdenadas.length === 0) {
+                        contenedor.innerHTML = "<p style='text-align:center;'>No hay registros de desempeño ni participaciones en este trimestre.</p>";
+                        return;
+                    }
+
+                    columnasReporteActual = [];
+                    let htmlTabla = `<table><thead><tr><th>No.</th><th class="nombre-col">Nombre del Alumno</th>`;
+
+                    clavesSemanasOrdenadas.forEach(clave => {
+                        const etiquetaSemana = mapaSemanas[clave];
+                        htmlTabla += `<th>${etiquetaSemana}</th>`;
+                        htmlTabla += `<th class="sub-col">Comentario</th>`;
+                        htmlTabla += `<th class="sub-col fin-bloque">Participaciones</th>`;
+
+                        columnasReporteActual.push(etiquetaSemana);
+                        columnasReporteActual.push(`Comentario (${etiquetaSemana})`);
+                        columnasReporteActual.push(`Participaciones (${etiquetaSemana})`);
+                    });
+
+                    htmlTabla += `</tr></thead><tbody>`;
+                    datosMatrizActual = [];
+
+                    alumnos.forEach((alumno, index) => {
+                        let numLista = index + 1;
+                        let filaHTML = `<tr><td>${numLista}</td><td class="nombre-col">${alumno.nombre_completo}</td>`;
+                        let datosAlumno = { numero: numLista, nombre: alumno.nombre_completo, celdas: [] };
+
+                        const evalAlumno = (registrosDesempeno || []).filter(r => r.alumno_id === alumno.id);
+                        const partAlumno = (registrosParticipacion || []).filter(p => p.alumno_id === alumno.id);
+
+                        clavesSemanasOrdenadas.forEach(claveLunes => {
+                            const regSem = evalAlumno.find(r => obtenerDatosSemana(r.fecha).claveLunes === claveLunes);
+                            const conteoPartSem = partAlumno.filter(p => obtenerDatosSemana(p.fecha).claveLunes === claveLunes).length;
+
+                            if (regSem) {
+                                let claseColor = '';
+                                if (regSem.color === 'VERDE') claseColor = 'celda-verde';
+                                else if (regSem.color === 'AMARILLO') claseColor = 'celda-amarillo';
+                                else if (regSem.color === 'NARANJA') claseColor = 'celda-naranja';
+
+                                filaHTML += `<td class="${claseColor}">${regSem.color}</td>`;
+                                filaHTML += `<td class="celda-comentario">${regSem.comentario}</td>`;
+                                
+                                datosAlumno.celdas.push({ valor: regSem.color, tipo: regSem.color });
+                                datosAlumno.celdas.push({ valor: regSem.comentario, tipo: 'comentario' });
+                            } else {
+                                filaHTML += `<td class="falto">-</td>`;
+                                filaHTML += `<td class="falto">-</td>`;
+                                
+                                datosAlumno.celdas.push({ valor: '-', tipo: 'falto' });
+                                datosAlumno.celdas.push({ valor: '-', tipo: 'falto' });
+                            }
+
+                            filaHTML += `<td class="celda-participacion">${conteoPartSem}</td>`;
+                            datosAlumno.celdas.push({ valor: conteoPartSem, tipo: 'participacion' });
+                        });
+
+                        datosMatrizActual.push(datosAlumno);
+                        filaHTML += `</tr>`;
+                        htmlTabla += filaHTML;
+                    });
+
+                    htmlTabla += `</tbody></table>`;
+                    contenedor.innerHTML = htmlTabla;
+                    btnDescarga.style.display = "inline-block";
+
+                } else if (modoReporteActual === 'conducta') {
+                    // =========================================================================
+                    // MODO 3: MATRIZ DE CONDUCTA TRIMESTRAL POR QUINCENAS (CADA 2 SEMANAS)
+                    // =========================================================================
+                    const fechaInicioQuincenaTrim = obtenerDatosQuincena(primerDiaTrim).claveInicio;
+                    const fechaFinQuincenaTrim = obtenerDatosQuincena(ultimoDiaTrim).fechaFinQuincena;
+
+                    const { data: registrosConducta } = await clienteSupabase
+                        .from('conducta_susana')
+                        .select('alumno_id, fecha, comentario, escala, created_at')
+                        .in('alumno_id', idsAlumnos)
+                        .gte('fecha', fechaInicioQuincenaTrim)
+                        .lte('fecha', fechaFinQuincenaTrim)
+                        .order('created_at', { ascending: true });
+
+                    const mapaQuincenas = {};
+                    (registrosConducta || []).forEach(r => {
+                        const quin = obtenerDatosQuincena(r.fecha);
+                        mapaQuincenas[quin.claveInicio] = quin.etiqueta;
+                    });
+
+                    const clavesQuincenasOrdenadas = Object.keys(mapaQuincenas).sort();
+
+                    if (clavesQuincenasOrdenadas.length === 0) {
+                        contenedor.innerHTML = "<p style='text-align:center;'>No hay registros de conducta en este trimestre.</p>";
+                        return;
+                    }
+
+                    columnasReporteActual = [];
+                    let htmlTabla = `<table><thead><tr><th>No.</th><th class="nombre-col">Nombre del Alumno</th>`;
+
+                    clavesQuincenasOrdenadas.forEach(clave => {
+                        const etiquetaQuincena = mapaQuincenas[clave];
+                        htmlTabla += `<th>${etiquetaQuincena}</th>`;
+                        htmlTabla += `<th class="sub-col fin-bloque">Escala</th>`;
+
+                        columnasReporteActual.push(`Observación (${etiquetaQuincena})`);
+                        columnasReporteActual.push(`Escala (${etiquetaQuincena})`);
+                    });
+
+                    htmlTabla += `</tr></thead><tbody>`;
+                    datosMatrizActual = [];
+
+                    alumnos.forEach((alumno, index) => {
+                        let numLista = index + 1;
+                        let filaHTML = `<tr><td>${numLista}</td><td class="nombre-col">${alumno.nombre_completo}</td>`;
+                        let datosAlumno = { numero: numLista, nombre: alumno.nombre_completo, celdas: [] };
+
+                        const condAlumno = (registrosConducta || []).filter(r => r.alumno_id === alumno.id);
+
+                        clavesQuincenasOrdenadas.forEach(claveInicio => {
+                            const regQuin = condAlumno.find(r => obtenerDatosQuincena(r.fecha).claveInicio === claveInicio);
+
+                            if (regQuin) {
+                                filaHTML += `<td class="celda-comentario">${regQuin.comentario}</td>`;
+                                filaHTML += `<td class="celda-escala">${regQuin.escala}</td>`;
+
+                                datosAlumno.celdas.push({ valor: regQuin.comentario, tipo: 'comentario' });
+                                datosAlumno.celdas.push({ valor: regQuin.escala, tipo: 'escala' });
+                            } else {
+                                filaHTML += `<td class="falto">-</td>`;
+                                filaHTML += `<td class="falto fin-bloque">-</td>`;
+
+                                datosAlumno.celdas.push({ valor: '-', tipo: 'falto' });
+                                datosAlumno.celdas.push({ valor: '-', tipo: 'falto' });
+                            }
+                        });
+
+                        datosMatrizActual.push(datosAlumno);
+                        filaHTML += `</tr>`;
+                        htmlTabla += filaHTML;
+                    });
+
+                    htmlTabla += `</tbody></table>`;
+                    contenedor.innerHTML = htmlTabla;
+                    btnDescarga.style.display = "inline-block";
+                }
+
+            } catch (error) {
+                contenedor.innerHTML = "<p style='color:red; text-align:center;'>Ocurrió un error al cargar el reporte.</p>";
+            }
+        }
+
+        // --- DESCARGAR EXCEL (.XLSX) CON COLORES Y ESTILOS ---
+        function descargarMatrizExcel() {
+            const grupoSeleccionado = document.getElementById('select-grupo').value;
+
+            const bordeDelgado = {
+                top: { style: "thin", color: { rgb: "CCCCCC" } },
+                bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+                left: { style: "thin", color: { rgb: "CCCCCC" } },
+                right: { style: "thin", color: { rgb: "CCCCCC" } }
+            };
+
+            const estiloEncabezado = {
+                fill: { fgColor: { rgb: "66BB6A" } },
+                font: { color: { rgb: "FFFFFF" }, bold: true, sz: 11 },
+                alignment: { horizontal: "center", vertical: "center" },
+                border: bordeDelgado
+            };
+
+            // 1. Construir fila de encabezados con estilo verde
+            const filaEncabezados = [
+                { v: "No.", t: "s", s: estiloEncabezado },
+                { v: "Nombre del Alumno", t: "s", s: estiloEncabezado }
+            ];
+
+            columnasReporteActual.forEach(col => {
+                filaEncabezados.push({ v: col, t: "s", s: estiloEncabezado });
+            });
+
+            if (modoReporteActual === 'asistencia') {
+                filaEncabezados.push({ v: "TOTAL ASISTENCIAS", t: "s", s: estiloEncabezado });
+            }
+
+            const filasExcel = [filaEncabezados];
+
+            // 2. Construir filas de alumnos pintando cada celda según su tipo
+            datosMatrizActual.forEach(alumno => {
+                const fila = [
+                    {
+                        v: alumno.numero,
+                        t: "n",
+                        s: { alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado }
+                    },
+                    {
+                        v: alumno.nombre,
+                        t: "s",
+                        s: { font: { bold: true }, alignment: { horizontal: "left", vertical: "center" }, border: bordeDelgado }
+                    }
+                ];
+
+                alumno.celdas.forEach(celda => {
+                    let estiloCelda = {
+                        alignment: { horizontal: "center", vertical: "center" },
+                        border: bordeDelgado
+                    };
+
+                    if (celda.tipo === 'VERDE') {
+                        estiloCelda.fill = { fgColor: { rgb: "2ECC71" } };
+                        estiloCelda.font = { color: { rgb: "FFFFFF" }, bold: true };
+                    } else if (celda.tipo === 'AMARILLO') {
+                        estiloCelda.fill = { fgColor: { rgb: "F1C40F" } };
+                        estiloCelda.font = { color: { rgb: "333333" }, bold: true };
+                    } else if (celda.tipo === 'NARANJA') {
+                        estiloCelda.fill = { fgColor: { rgb: "E67E22" } };
+                        estiloCelda.font = { color: { rgb: "FFFFFF" }, bold: true };
+                    } else if (celda.tipo === 'participacion') {
+                        estiloCelda.fill = { fgColor: { rgb: "F1F8E9" } };
+                        estiloCelda.font = { color: { rgb: "2E7D32" }, bold: true };
+                    } else if (celda.tipo === 'escala') {
+                        estiloCelda.fill = { fgColor: { rgb: "E8F8F5" } };
+                        estiloCelda.font = { color: { rgb: "0E6251" }, bold: true };
+                    } else if (celda.tipo === 'asistio') {
+                        estiloCelda.fill = { fgColor: { rgb: "E8F8F5" } };
+                        estiloCelda.font = { color: { rgb: "1E8449" }, bold: true };
+                    } else if (celda.tipo === 'falto') {
+                        estiloCelda.font = { color: { rgb: "999999" } };
+                    }
+
+                    const tipoDato = typeof celda.valor === 'number' ? 'n' : 's';
+                    fila.push({ v: celda.valor, t: tipoDato, s: estiloCelda });
+                });
+
+                if (modoReporteActual === 'asistencia') {
+                    fila.push({
+                        v: alumno.total,
+                        t: "n",
+                        s: {
+                            fill: { fgColor: { rgb: "F1F8E9" } },
+                            font: { bold: true, color: { rgb: "1B5E20" } },
+                            alignment: { horizontal: "center", vertical: "center" },
+                            border: bordeDelgado
+                        }
+                    });
+                }
+
+                filasExcel.push(fila);
+            });
+
+            // 3. Crear hoja de Excel y ajustar el ancho de las columnas automáticamente
+            const hoja = XLSX.utils.aoa_to_sheet(filasExcel);
+
+            const anchosColumnas = [
+                { wch: 6 },  // Columna No.
+                { wch: 32 }  // Columna Nombre del Alumno
+            ];
+
+            columnasReporteActual.forEach(col => {
+                if (modoReporteActual === 'asistencia') {
+                    anchosColumnas.push({ wch: 10 });
+                } else if (col.startsWith('Comentario') || col.startsWith('Observación')) {
+                    anchosColumnas.push({ wch: 26 });
+                } else if (col.startsWith('Participaciones') || col.startsWith('Escala')) {
+                    anchosColumnas.push({ wch: 22 });
+                } else {
+                    anchosColumnas.push({ wch: 18 });
+                }
+            });
+
+            if (modoReporteActual === 'asistencia') {
+                anchosColumnas.push({ wch: 20 });
+            }
+
+            hoja['!cols'] = anchosColumnas;
+
+            // 4. Generar y descargar el archivo .xlsx
+            const libro = XLSX.utils.book_new();
+            let nombrePestana = "Asistencias Trimestral";
+            let prefijo = "Asistencias_Trimestral";
+
+            if (modoReporteActual === 'desempeno') {
+                nombrePestana = "Desempeño Trimestral";
+                prefijo = "Desempeno_Trimestral";
+            } else if (modoReporteActual === 'conducta') {
+                nombrePestana = "Conducta Trimestral";
+                prefijo = "Conducta_Trimestral";
+            }
+
+            XLSX.utils.book_append_sheet(libro, hoja, nombrePestana);
+
+            const periodo = `${document.getElementById('input-mes-inicio').value}_a_${document.getElementById('input-mes-fin').value}`;
+            XLSX.writeFile(libro, `${prefijo}_Susana_Grupo_${grupoSeleccionado}_${periodo}.xlsx`);
+        }
+
+        function traducirEscaner() {
+            let camaraActiva = false;
+
+            document.querySelectorAll('button').forEach(btn => {
+                if (btn.innerText.includes("Request Camera Permissions")) btn.innerText = "Permitir acceso a la cámara";
+                if (btn.innerText.includes("Start Scanning")) btn.innerText = "Iniciar cámara";
+                
+                if (btn.innerText.includes("Stop Scanning") || btn.innerText.includes("Detener cámara")) {
+                    btn.innerText = "Detener cámara";
+                    if (btn.offsetParent !== null) {
+                        camaraActiva = true; 
+                    }
+                }
+            });
+
+            document.querySelectorAll('#reader span').forEach(span => {
+                if (span.querySelector('select')) {
+                    span.style.display = camaraActiva ? 'none' : 'inline-block';
+                }
+            });
+
+            document.querySelectorAll('#reader a').forEach(enlace => {
+                enlace.style.display = camaraActiva ? 'none' : 'inline-block';
+            });
+
+            document.querySelectorAll('span').forEach(span => {
+                span.childNodes.forEach(nodo => {
+                    if (nodo.nodeType === 3 && nodo.nodeValue.includes("Select Camera")) {
+                        nodo.nodeValue = nodo.nodeValue.replace("Select Camera", "Seleccionar Cámara");
+                    }
+                });
+            });
+
+            document.querySelectorAll('option').forEach(opt => {
+                if (!opt.innerText.includes("Cámara")) {
+                    if (opt.innerText.toLowerCase().includes("front")) opt.innerText = "Cámara Frontal";
+                    if (opt.innerText.toLowerCase().includes("back")) opt.innerText = "Cámara Trasera";
+                }
+            });
+        }
+        
+        setInterval(traducirEscaner, 500);
+        escaner.render(onScanSuccess, onScanFailure);
+
+    </script>
+</body>
+</html>
